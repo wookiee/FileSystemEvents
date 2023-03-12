@@ -3,13 +3,13 @@ import Foundation
 import Combine
 import OSLog
 
-/// A `FileSystemWatcher` watches paths for events such as file modification or directory metadata changes.
-/// There are three different reporting patterns supported by `FileSystemWatcher`:
+/// A `FileSystemObserver` watches paths for events such as file modification or directory metadata changes.
+/// There are three different reporting patterns supported by `FileSystemObserver`:
 /// - For classical closure-based handling, assign a non-nil value to the `eventHandler` property
 /// - For a Combine publisher, access the `eventPublisher` property
 /// - For an `AsyncStream` to use with Swift structured concurrency, use the `eventStream` property
 /// Events are processed in the background,
-@available(macOS 10.15, *) public class FileSystemWatcher {
+@available(macOS 10.15, *) public class FileSystemObserver {
     
     let paths: [String]
     
@@ -115,8 +115,8 @@ import OSLog
         
 }
 
-@available(macOS 10.15, *) public extension FileSystemWatcher {
-    /// Abstraction of an event affecting a file or directory on disk being watched by a `FileSystemWatcher`.
+@available(macOS 10.15, *) public extension FileSystemObserver {
+    /// Abstraction of an event affecting a file or directory on disk being watched by a `FileSystemObserver`.
     /// Instances will be vended to client code; it is generally not meaningful to create them yourself.
     struct Event {
         let path: String
@@ -150,12 +150,12 @@ private func callback(streamRef: ConstFSEventStreamRef,
     }
 
     let events = (0 ..< eventCount).map { index in
-        FileSystemWatcher.Event(path: paths[index], flags: flags[index], id: ids[index])
+        FileSystemObserver.Event(path: paths[index], flags: flags[index], id: ids[index])
     }
     
     // Unmanaged approach recommended by QtE in forums:
     // https://forums.swift.org/t/callback-in-swift/4984
-    let watcher = Unmanaged<FileSystemWatcher>.fromOpaque(clientInfo!).takeUnretainedValue()
+    let watcher = Unmanaged<FileSystemObserver>.fromOpaque(clientInfo!).takeUnretainedValue()
     for event in events {
         watcher.handleEvent(event)
     }
