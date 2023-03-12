@@ -1,7 +1,6 @@
 import CoreServices
 import Foundation
 import Combine
-import OSLog
 
 /// A `FileSystemObserver` watches paths for events such as file modification or directory metadata changes.
 /// There are three different reporting patterns supported by `FileSystemObserver`:
@@ -11,9 +10,9 @@ import OSLog
 /// Events are processed in the background,
 @available(macOS 10.15, *) public class FileSystemObserver {
     
-    let paths: [String]
+    public let paths: [String]
     
-    init(paths: [String]) {
+    public init(paths: [String]) {
         self.paths = paths
     }
     
@@ -74,7 +73,7 @@ import OSLog
         streamContinuation?.yield(event)
     }
     
-    // MARK: - Helpers
+    // MARK: - Private Helpers
     
     private func makeFlags() -> UInt32 {
         return UInt32(
@@ -94,7 +93,8 @@ import OSLog
         )
     }
     
-    private func makeStream(callback: FSEventStreamCallback,
+    private func makeStream(
+                            callback: FSEventStreamCallback,
                             context:  FSEventStreamContext,
                             paths: [String],
                             flags: FSEventStreamEventFlags) -> FSEventStreamRef {
@@ -103,7 +103,7 @@ import OSLog
             kCFAllocatorDefault,    // memory allocator
             callback,   // FSEventStreamCallback
             &context, // UnsafeMutablePointer<FSEventStreamContext>?
-            paths as NSArray, // CFArray<String>
+            paths as CFArray, // CFArray of CFStrings
             UInt64(kFSEventStreamEventIdSinceNow), // FSEventStreamEventID to start from
             0.1, // desired latency
             flags
@@ -113,16 +113,6 @@ import OSLog
         return stream
     }
         
-}
-
-@available(macOS 10.15, *) public extension FileSystemObserver {
-    /// Abstraction of an event affecting a file or directory on disk being watched by a `FileSystemObserver`.
-    /// Instances will be vended to client code; it is generally not meaningful to create them yourself.
-    struct Event {
-        let path: String
-        let flags: FSEventStreamEventFlags
-        let id: FSEventStreamEventId
-    }
 }
 
 // MARK: - Global event callback
@@ -137,23 +127,27 @@ private func callback(streamRef: ConstFSEventStreamRef,
                           eventFlags: UnsafePointer<FSEventStreamEventFlags>,
                           eventIDs: UnsafePointer<FSEventStreamEventId>) {
     
-    let paths = eventPaths.load(as: [String].self)
+    let paths = unsafeBitCast(eventPaths, to: NSArray.self)
     
     var flags = [FSEventStreamEventFlags]()
-    eventFlags.withMemoryRebound(to: FSEventStreamEventFlags.self, capacity: eventCount) { pointer in
-        flags.append(pointer.pointee)
+    for i in 0 ..< eventCount {
+        flags.append(eventFlags.pointee.advanced(by: i) as FSEventStreamEventFlags)
     }
     
     var ids = [FSEventStreamEventId]()
-    eventIDs.withMemoryRebound(to: FSEventStreamEventId.self, capacity: eventCount) { pointer in
-        ids.append(pointer.pointee)
+    for i in 0 ..< eventCount {
+        ids.append(eventIDs.pointee.advanced(by: i) as FSEventStreamEventId)
     }
 
     let events = (0 ..< eventCount).map { index in
-        FileSystemObserver.Event(path: paths[index], flags: flags[index], id: ids[index])
+        FileSystemObserver.Event(
+            path: paths[index] as! String,
+            flags: FileSystemObserver.Event.Flags(rawValue: flags[index]),
+            id: ids[index]
+        )
     }
     
-    // Unmanaged approach recommended by QtE in forums:
+    // Unmanaged approach recommended by Quinn in the forums:
     // https://forums.swift.org/t/callback-in-swift/4984
     let watcher = Unmanaged<FileSystemObserver>.fromOpaque(clientInfo!).takeUnretainedValue()
     for event in events {
