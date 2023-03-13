@@ -2,7 +2,7 @@
 import Foundation
 import CoreServices
 
-@available(macOS 10.15, *) extension FileSystemObserver.Event {
+@available(macOS 10.15, iOS 13, *) extension FileSystemObserver.Event {
     
     /// Abstraction of `FSEventStreamEventFlags`
     public struct Flags: OptionSet, Codable, Hashable {

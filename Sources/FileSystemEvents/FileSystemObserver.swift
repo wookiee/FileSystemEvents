@@ -8,13 +8,9 @@ import Combine
 /// - For a Combine publisher, access the `eventPublisher` property
 /// - For an `AsyncStream` to use with Swift structured concurrency, use the `eventStream` property
 /// Events are processed in the background,
-@available(macOS 10.15, *) public class FileSystemObserver {
-    
-    public let paths: [String]
-    
-    public init(paths: [String]) {
-        self.paths = paths
-    }
+@available(macOS 10.15, iOS 13, *) public class FileSystemObserver {
+
+    public init() { }
     
     deinit {
         stop()
@@ -44,11 +40,11 @@ import Combine
      
     // MARK: - Behavior
     
-    public func start() {
+    public func start(paths: [String], flags: FSEventStreamEventFlags? = nil) {
         stop() // in case there was already a running stream
         
         let context = makeContext()
-        let flags = makeFlags()
+        let flags = flags ?? makeFlags()
         let stream = makeStream(callback: callback, context: context, paths: paths, flags: flags)
         
         fsEventStream = stream
@@ -119,7 +115,7 @@ import Combine
 
 /// Callback to be called repeatedly by Apple when events are ready for processing.
 /// See documentation for the `FSEventStreamCallback` function typealias.
-@available(macOS 10.15, *)
+@available(macOS 10.15, iOS 13, *)
 private func callback(streamRef: ConstFSEventStreamRef,
                           clientInfo: UnsafeMutableRawPointer?,
                           eventCount: Int,

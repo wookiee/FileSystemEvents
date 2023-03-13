@@ -2,7 +2,7 @@
 import Foundation
 import CoreServices
 
-@available(macOS 10.15, *) extension FileSystemObserver {
+@available(macOS 10.15, iOS 13, *) extension FileSystemObserver {
     
     /// Abstraction of an event affecting a file or directory on disk being watched by a `FileSystemObserver`.
     /// Instances will be vended to client code; it is generally not meaningful to create them yourself.
